@@ -1,9 +1,9 @@
-provide "aws {
+provider "aws" {
   profile = "default"
-  region = "us-east-2a"
+  region = "us-east-2"
 }
 
 resource "aws_s3_bucket" "tf_course" {
-  bucket = "traning-with-terraform-20210215"
+  bucket = "training-with-terraform-20210215"
   acl    = "private"
 }
