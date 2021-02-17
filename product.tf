@@ -39,6 +39,8 @@ resource "aws_security_group" "product_web" {
 
 
 resource "aws_instance" "product_web" {
+  count = 2
+
   ami           = "ami-0b520470eb99fa895"
   instance_type = "t2.micro"
 
@@ -51,9 +53,12 @@ resource "aws_instance" "product_web" {
   }
 }
 
-resource "aws_eip" "product_web" {
-  instance = aws_instance.product_web.id
+resource "aws_eip_association" "product_web" {
+  instance_id  = aws_instance.product_web[0].id
+  allocation_id = aws_eip.product_web.id
+}
 
+resource "aws_eip" "product_web" {
   tags = {
     "Terraform" : "true"
   }
