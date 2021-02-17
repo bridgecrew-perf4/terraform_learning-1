@@ -1,6 +1,11 @@
+variable "zone_array" {
+type    = list(string)
+default = ["us-east-2a", "us-east-2b"]
+}
+
 provider "aws" {
   profile = "default"
-  region = "us-east-2"
+  region  = "us-east-2"
 }
 
 resource "aws_s3_bucket" "product_tf_course" {
@@ -25,7 +30,7 @@ resource "aws_default_subnet" "default_az2" {
 }
 
 resource "aws_security_group" "product_web" {
-  name = "product_web"
+  name        = "product_web"
   description = "Allow http and https (80, 443) port to inbound and everything outboun"
 
   ingress {
@@ -55,8 +60,9 @@ resource "aws_security_group" "product_web" {
 resource "aws_instance" "product_web" {
   count = 2
 
-  ami           = "ami-0b520470eb99fa895"
-  instance_type = "t2.micro"
+  ami               = "ami-0b520470eb99fa895"
+  instance_type     = "t2.micro"
+  availability_zone = var.zone_array[count.index]  
 
   vpc_security_group_ids = [
     aws_security_group.product_web.id
