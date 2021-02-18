@@ -1,6 +1,6 @@
 variable "zone_array" {
-type    = list(string)
-default = ["us-east-2a", "us-east-2b"]
+  type    = list(string)
+  default = ["us-east-2a", "us-east-2b"]
 }
 
 provider "aws" {
@@ -16,14 +16,14 @@ resource "aws_s3_bucket" "product_tf_course" {
 resource "aws_default_vpc" "default" {}
 
 resource "aws_default_subnet" "default_az1" {
-  availability_zone = "us-east-2a"
+  availability_zone = var.zone_array[0]
   tags = {
     "Terraform" : "true"
   }
 }
 
 resource "aws_default_subnet" "default_az2" {
-  availability_zone = "us-east-2b"
+  availability_zone = var.zone_array[1]
   tags = {
     "Terraform" : "true"
   }
@@ -57,37 +57,10 @@ resource "aws_security_group" "product_web" {
 }
 
 
-resource "aws_instance" "product_web" {
-  count = 2
-
-  ami               = "ami-0b520470eb99fa895"
-  instance_type     = "t2.micro"
-  availability_zone = var.zone_array[count.index]  
-
-  vpc_security_group_ids = [
-    aws_security_group.product_web.id
-  ]
-
-  tags = {
-    "Terraform" : "true"
-  }
-}
-
-resource "aws_eip_association" "product_web" {
-  instance_id   = aws_instance.product_web[0].id
-  allocation_id = aws_eip.product_web.id
-}
-
-resource "aws_eip" "product_web" {
-  tags = {
-    "Terraform" : "true"
-  }
-}
 
 resource "aws_elb" "product_web" {
   name            = "product-web-lb"
-  instances       = aws_instance.product_web[*].id
-  subnets         = [aws_default_subnet.default_az1.id, aws_default_subnet.default_az2.id]  
+ subnets         = [aws_default_subnet.default_az1.id, aws_default_subnet.default_az2.id]  
   security_groups = [aws_security_group.product_web.id]
 
   listener {
@@ -100,5 +73,40 @@ resource "aws_elb" "product_web" {
     "Terraform" : "true"
   }
 }
+
+resource "aws_launch_template" "product_web" {
+  name_prefix   = "product-web"
+  image_id      = "ami-0b520470eb99fa895"
+  instance_type = "t2.micro"
+  vpc_security_group_ids = [ aws_security_group.product_web.id ]
+  tags = {
+    "Terraform" : "true"
+  }
+}
+
+resource "aws_autoscaling_group" "product_web" {
+  vpc_zone_identifier = [aws_default_subnet.default_az1.id, aws_default_subnet.default_az2.id]
+  desired_capacity    = 2
+  max_size            = 4
+  min_size            = 2
+   
+
+  launch_template {
+    id      = aws_launch_template.product_web.id
+    version = "$Latest"
+  }
+  tag {
+    key                 = "Terraform"
+    value               = "true"
+    propagate_at_launch = true
+  }
+}
+resource "aws_autoscaling_attachment" "product_web" {
+  autoscaling_group_name = aws_autoscaling_group.product_web.id
+  elb                    = aws_elb.product_web.id
+}
+
+
+
 
 
