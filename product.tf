@@ -1,4 +1,23 @@
-variable "zone_array" {
+variable "whitelist" {
+  type = list(string)
+}
+variable "web_image_id" {
+  type = string
+}
+variable "web_instance_type" {
+  type = string
+}
+variable "web_desired_capacity" {
+  type = number
+}
+variable "web_max_size" {
+  type = number
+}
+variable "web_min_size" {
+  type = number
+}
+
+variable "web_zone" {
   type    = list(string)
   default = ["us-east-2a", "us-east-2b"]
 }
@@ -16,14 +35,14 @@ resource "aws_s3_bucket" "product_tf_course" {
 resource "aws_default_vpc" "default" {}
 
 resource "aws_default_subnet" "default_az1" {
-  availability_zone = var.zone_array[0]
+  availability_zone = var.web_zone[0]
   tags = {
     "Terraform" : "true"
   }
 }
 
 resource "aws_default_subnet" "default_az2" {
-  availability_zone = var.zone_array[1]
+  availability_zone = var.web_zone[1]
   tags = {
     "Terraform" : "true"
   }
@@ -37,19 +56,19 @@ resource "aws_security_group" "product_web" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.whitelist
   }
   ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.whitelist
   }
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.whitelist
   }
   tags = {
     "Terraform" : "true"
@@ -76,8 +95,8 @@ resource "aws_elb" "product_web" {
 
 resource "aws_launch_template" "product_web" {
   name_prefix   = "product-web"
-  image_id      = "ami-0b520470eb99fa895"
-  instance_type = "t2.micro"
+  image_id      = var.web_image_id
+  instance_type = var.web_instance_type
   vpc_security_group_ids = [ aws_security_group.product_web.id ]
   tags = {
     "Terraform" : "true"
@@ -86,9 +105,9 @@ resource "aws_launch_template" "product_web" {
 
 resource "aws_autoscaling_group" "product_web" {
   vpc_zone_identifier = [aws_default_subnet.default_az1.id, aws_default_subnet.default_az2.id]
-  desired_capacity    = 2
-  max_size            = 4
-  min_size            = 2
+  desired_capacity    = var.web_desired_capacity
+  max_size            = var.web_max_size
+  min_size            = var.web_min_size
    
 
   launch_template {
@@ -105,8 +124,3 @@ resource "aws_autoscaling_attachment" "product_web" {
   autoscaling_group_name = aws_autoscaling_group.product_web.id
   elb                    = aws_elb.product_web.id
 }
-
-
-
-
-
