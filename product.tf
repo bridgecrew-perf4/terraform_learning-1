@@ -19,7 +19,6 @@ variable "web_min_size" {
 
 variable "web_zone" {
   type    = list(string)
-  default = ["us-east-2a", "us-east-2b"]
 }
 
 provider "aws" {
@@ -74,53 +73,15 @@ resource "aws_security_group" "product_web" {
     "Terraform" : "true"
   }
 }
+module "web_app" {
+  source = "./modules/web_app"
 
-
-
-resource "aws_elb" "product_web" {
-  name            = "product-web-lb"
- subnets         = [aws_default_subnet.default_az1.id, aws_default_subnet.default_az2.id]  
-  security_groups = [aws_security_group.product_web.id]
-
-  listener {
-    instance_port     = 80
-    instance_protocol = "http"
-    lb_port           = 80
-    lb_protocol       = "http"
-  }
-  tags = {
-    "Terraform" : "true"
-  }
-}
-
-resource "aws_launch_template" "product_web" {
-  name_prefix   = "product-web"
-  image_id      = var.web_image_id
-  instance_type = var.web_instance_type
-  vpc_security_group_ids = [ aws_security_group.product_web.id ]
-  tags = {
-    "Terraform" : "true"
-  }
-}
-
-resource "aws_autoscaling_group" "product_web" {
-  vpc_zone_identifier = [aws_default_subnet.default_az1.id, aws_default_subnet.default_az2.id]
-  desired_capacity    = var.web_desired_capacity
-  max_size            = var.web_max_size
-  min_size            = var.web_min_size
-   
-
-  launch_template {
-    id      = aws_launch_template.product_web.id
-    version = "$Latest"
-  }
-  tag {
-    key                 = "Terraform"
-    value               = "true"
-    propagate_at_launch = true
-  }
-}
-resource "aws_autoscaling_attachment" "product_web" {
-  autoscaling_group_name = aws_autoscaling_group.product_web.id
-  elb                    = aws_elb.product_web.id
+  web_image_id         = var.web_image_id
+  web_instance_type    = var.web_instance_type
+  web_desired_capacity = var.web_desired_capacity
+  web_max_size         = var.web_max_size
+  web_min_size         = var.web_min_size
+  subnets              = [aws_default_subnet.default_az1.id,aws_default_subnet.default_az2.id]
+  security_groups      = [aws_security_group.product_web.id]
+  web_app	           = "product"
 }
